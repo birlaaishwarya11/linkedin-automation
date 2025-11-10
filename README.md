@@ -163,11 +163,50 @@ curl "http://localhost:8000/health"
 
 ### 🤖 MCP Server Mode
 
+For AI assistants and MCP clients:
+
 ```bash
 python -m linkedin_job_mcp.server
 ```
 
 The server will start and listen for MCP requests via stdio.
+
+**Available MCP Tools:**
+- `search_linkedin_jobs` - Search LinkedIn and add jobs to Google Sheets
+- `create_job_spreadsheet` - Create a new Google Spreadsheet
+- `get_spreadsheet_info` - Get information about a spreadsheet
+
+**Claude Desktop Configuration:**
+```json
+{
+  "mcpServers": {
+    "linkedin-job-search": {
+      "command": "python",
+      "args": ["-m", "linkedin_job_mcp.server"],
+      "cwd": "/path/to/your/project"
+    }
+  }
+}
+```
+
+📚 **Detailed MCP Usage Guide**: See [MCP_USAGE.md](MCP_USAGE.md) for complete instructions.
+
+### 🌐 TrueFoundry Deployment (FastMCP)
+
+For cloud deployment on TrueFoundry platform:
+
+```bash
+# Use the FastMCP server
+python fastmcp_server.py
+```
+
+**TrueFoundry Configuration:**
+- **Main File:** `fastmcp_server.py`
+- **Port:** `8000`
+- **Health Check:** `/health`
+- **MCP Endpoint:** `/mcp`
+
+🚀 **Complete TrueFoundry Guide**: See [TRUEFOUNDRY_DEPLOYMENT.md](TRUEFOUNDRY_DEPLOYMENT.md) for step-by-step deployment instructions.
 
 ### Available Tools
 
