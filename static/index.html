@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LinkedIn Job Search API</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #0077b5, #005885);
+            color: white;
+            padding: 2rem;
+            border-radius: 10px;
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 10px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: #555;
+        }
+        
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #e1e5e9;
+            border-radius: 5px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+        
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #0077b5;
+        }
+        
+        .form-group textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+        
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+        
+        .btn {
+            background: #0077b5;
+            color: white;
+            border: none;
+            padding: 0.75rem 2rem;
+            border-radius: 5px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .btn:hover {
+            background: #005885;
+        }
+        
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+        }
+        
+        .btn-secondary:hover {
+            background: #545b62;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 2rem;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #0077b5;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .results {
+            display: none;
+        }
+        
+        .job-item {
+            border: 1px solid #e1e5e9;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            background: #fafafa;
+        }
+        
+        .job-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #0077b5;
+            margin-bottom: 0.5rem;
+        }
+        
+        .job-company {
+            font-size: 1.1rem;
+            color: #666;
+            margin-bottom: 0.5rem;
+        }
+        
+        .job-location {
+            color: #888;
+            margin-bottom: 1rem;
+        }
+        
+        .job-match {
+            background: #d4edda;
+            color: #155724;
+            padding: 0.25rem 0.5rem;
+            border-radius: 3px;
+            font-size: 0.9rem;
+            display: inline-block;
+            margin-bottom: 0.5rem;
+        }
+        
+        .job-description {
+            color: #555;
+            line-height: 1.5;
+            margin-bottom: 1rem;
+        }
+        
+        .job-url {
+            color: #0077b5;
+            text-decoration: none;
+        }
+        
+        .job-url:hover {
+            text-decoration: underline;
+        }
+        
+        .alert {
+            padding: 1rem;
+            border-radius: 5px;
+            margin-bottom: 1rem;
+        }
+        
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .stat-item {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #0077b5;
+        }
+        
+        .stat-label {
+            color: #666;
+            margin-top: 0.5rem;
+        }
+        
+        @media (max-width: 768px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .container {
+                padding: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 LinkedIn Job Search</h1>
+            <p>Search for jobs on LinkedIn and automatically add them to Google Sheets</p>
+        </div>
+        
+        <div class="card">
+            <h2>Job Search</h2>
+            <form id="jobSearchForm">
+                <div class="form-group">
+                    <label for="keywords">Job Keywords *</label>
+                    <input type="text" id="keywords" name="keywords" required 
+                           placeholder="e.g., Python developer, Data scientist, Product manager">
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="location">Location</label>
+                        <input type="text" id="location" name="location" 
+                               placeholder="e.g., San Francisco, CA or Remote">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="maxJobs">Max Jobs</label>
+                        <input type="number" id="maxJobs" name="max_jobs" value="25" min="1" max="100">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="requirements">Job Requirements (one per line)</label>
+                    <textarea id="requirements" name="requirements" 
+                              placeholder="Python&#10;Django&#10;REST API&#10;PostgreSQL&#10;AWS"></textarea>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="experienceLevel">Experience Level</label>
+                        <select id="experienceLevel" name="experience_level">
+                            <option value="">Any</option>
+                            <option value="internship">Internship</option>
+                            <option value="entry">Entry Level</option>
+                            <option value="associate">Associate</option>
+                            <option value="mid">Mid Level</option>
+                            <option value="director">Director</option>
+                            <option value="executive">Executive</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="employmentType">Employment Type</label>
+                        <select id="employmentType" name="employment_type">
+                            <option value="">Any</option>
+                            <option value="full-time">Full-time</option>
+                            <option value="part-time">Part-time</option>
+                            <option value="contract">Contract</option>
+                            <option value="temporary">Temporary</option>
+                            <option value="internship">Internship</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="datePosted">Date Posted</label>
+                        <select id="datePosted" name="date_posted">
+                            <option value="">Any time</option>
+                            <option value="past 24 hours">Past 24 hours</option>
+                            <option value="past week">Past week</option>
+                            <option value="past month">Past month</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="spreadsheetId">Google Spreadsheet ID (optional)</label>
+                        <input type="text" id="spreadsheetId" name="spreadsheet_id" 
+                               placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms">
+                    </div>
+                </div>
+                
+                <div style="text-align: center; margin-top: 2rem;">
+                    <button type="submit" class="btn">🔍 Search Jobs</button>
+                    <button type="button" class="btn btn-secondary" onclick="createSpreadsheet()">📊 Create New Spreadsheet</button>
+                </div>
+            </form>
+        </div>
+        
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Searching for jobs... This may take a few minutes.</p>
+        </div>
+        
+        <div class="results" id="results">
+            <div class="stats" id="stats"></div>
+            <div id="jobsList"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.origin;
+        
+        document.getElementById('jobSearchForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await searchJobs();
+        });
+        
+        async function searchJobs() {
+            const form = document.getElementById('jobSearchForm');
+            const formData = new FormData(form);
+            
+            // Convert form data to JSON
+            const data = {};
+            for (let [key, value] of formData.entries()) {
+                if (key === 'requirements') {
+                    data[key] = value.split('\n').filter(req => req.trim()).map(req => req.trim());
+                } else if (key === 'max_jobs') {
+                    data[key] = parseInt(value);
+                } else {
+                    data[key] = value;
+                }
+            }
+            
+            // Show loading
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('results').style.display = 'none';
+            
+            try {
+                const response = await fetch(`${API_BASE}/search`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    displayResults(result);
+                } else {
+                    showAlert('Error: ' + (result.error || 'Unknown error'), 'error');
+                }
+            } catch (error) {
+                showAlert('Error: ' + error.message, 'error');
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+        
+        function displayResults(result) {
+            const statsDiv = document.getElementById('stats');
+            const jobsListDiv = document.getElementById('jobsList');
+            
+            // Display stats
+            statsDiv.innerHTML = `
+                <div class="stat-item">
+                    <div class="stat-number">${result.jobs_found}</div>
+                    <div class="stat-label">Jobs Found</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">${result.matching_jobs}</div>
+                    <div class="stat-label">Matching Jobs</div>
+                </div>
+                ${result.jobs_added_to_sheets !== null ? `
+                <div class="stat-item">
+                    <div class="stat-number">${result.jobs_added_to_sheets}</div>
+                    <div class="stat-label">Added to Sheets</div>
+                </div>
+                ` : ''}
+            `;
+            
+            // Display jobs
+            if (result.jobs.length > 0) {
+                jobsListDiv.innerHTML = '<h3>Job Listings</h3>' + 
+                    result.jobs.map(job => `
+                        <div class="job-item">
+                            <div class="job-title">${escapeHtml(job.title)}</div>
+                            <div class="job-company">${escapeHtml(job.company)}</div>
+                            <div class="job-location">📍 ${escapeHtml(job.location)}</div>
+                            ${job.match_score ? `<div class="job-match">✅ ${Math.round(job.match_score * 100)}% match</div>` : ''}
+                            ${job.matches && job.matches.length > 0 ? `<div style="margin-bottom: 0.5rem;"><strong>Matches:</strong> ${job.matches.map(m => `<span style="background: #e3f2fd; padding: 2px 6px; border-radius: 3px; margin-right: 5px;">${escapeHtml(m)}</span>`).join('')}</div>` : ''}
+                            <div class="job-description">${escapeHtml(job.description.substring(0, 300))}${job.description.length > 300 ? '...' : ''}</div>
+                            <a href="${job.job_url}" target="_blank" class="job-url">🔗 View on LinkedIn</a>
+                        </div>
+                    `).join('');
+            } else {
+                jobsListDiv.innerHTML = '<p>No jobs found matching your criteria.</p>';
+            }
+            
+            // Show success message
+            if (result.spreadsheet_url) {
+                showAlert(`Jobs successfully added to spreadsheet! <a href="${result.spreadsheet_url}" target="_blank">View Spreadsheet</a>`, 'success');
+            } else {
+                showAlert(result.message, 'success');
+            }
+            
+            document.getElementById('results').style.display = 'block';
+        }
+        
+        async function createSpreadsheet() {
+            const title = prompt('Enter a title for the new spreadsheet:', 'LinkedIn Jobs - ' + new Date().toLocaleDateString());
+            if (!title) return;
+            
+            try {
+                const response = await fetch(`${API_BASE}/spreadsheet/create`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ title })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    document.getElementById('spreadsheetId').value = result.spreadsheet_id;
+                    showAlert(`Spreadsheet created successfully! <a href="${result.spreadsheet_url}" target="_blank">View Spreadsheet</a>`, 'success');
+                } else {
+                    showAlert('Error creating spreadsheet: ' + (result.error || 'Unknown error'), 'error');
+                }
+            } catch (error) {
+                showAlert('Error creating spreadsheet: ' + error.message, 'error');
+            }
+        }
+        
+        function showAlert(message, type) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type}`;
+            alertDiv.innerHTML = message;
+            
+            const container = document.querySelector('.container');
+            container.insertBefore(alertDiv, container.firstChild.nextSibling);
+            
+            setTimeout(() => {
+                alertDiv.remove();
+            }, 10000);
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        // Load health status on page load
+        window.addEventListener('load', async () => {
+            try {
+                const response = await fetch(`${API_BASE}/health`);
+                const health = await response.json();
+                
+                if (health.services.google_sheets === 'credentials_missing') {
+                    showAlert('⚠️ Google Sheets credentials not configured. You can still search jobs, but they won\'t be added to spreadsheets.', 'error');
+                }
+            } catch (error) {
+                console.log('Could not check health status:', error);
+            }
+        });
+    </script>
+</body>
+</html>

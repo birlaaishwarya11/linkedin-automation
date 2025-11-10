@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "linkedin-job-mcp-server"
+version = "0.1.0"
+description = "MCP server for searching LinkedIn jobs and adding them to Google Sheets"
+authors = [{name = "OpenHands", email = "openhands@all-hands.dev"}]
+license = {text = "MIT"}
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+]
+dependencies = [
+    "mcp>=1.0.0",
+    "selenium>=4.15.0",
+    "beautifulsoup4>=4.12.0",
+    "google-api-python-client>=2.100.0",
+    "google-auth-httplib2>=0.2.0",
+    "google-auth-oauthlib>=1.1.0",
+    "requests>=2.31.0",
+    "python-dotenv>=1.0.0",
+    "pydantic>=2.5.0",
+    "asyncio-throttle>=1.0.2",
+    "webdriver-manager>=4.0.0",
+    "lxml>=4.9.0",
+    "fastapi>=0.104.0",
+    "uvicorn[standard]>=0.24.0",
+    "python-multipart>=0.0.6",
+]
+
+[project.scripts]
+linkedin-job-mcp = "linkedin_job_mcp.server:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["linkedin_job_mcp*"]

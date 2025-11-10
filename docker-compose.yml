@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  linkedin-job-api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - CHROME_HEADLESS=true
+      - SEARCH_DELAY_SECONDS=3
+      - MAX_CONCURRENT_SEARCHES=2
+      - GOOGLE_CREDENTIALS_PATH=/app/credentials.json
+    volumes:
+      - ./credentials.json:/app/credentials.json:ro
+      - ./logs:/app/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
