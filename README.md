@@ -2,6 +2,18 @@
 
 A comprehensive job search solution that provides both a FastAPI web service and Model Context Protocol (MCP) server for searching LinkedIn jobs based on your requirements and automatically adding matching jobs to Google Sheets.
 
+## 🚀 Quick Start
+
+```bash
+# 1. Install dependencies
+pip install -r requirements.txt
+
+# 2. Start the server (one command!)
+uvicorn main:app --host 0.0.0.0 --port 8000
+
+# 3. Open http://localhost:8000 in your browser
+```
+
 ## 🌟 Features
 
 ### Web Interface & API
@@ -78,37 +90,42 @@ A comprehensive job search solution that provides both a FastAPI web service and
 
 ## Usage
 
-### 🌐 Web Interface (Recommended)
+### 🌐 Quick Start (One Command!)
 
-1. **Start the FastAPI server:**
-   ```bash
-   python run_server.py
-   ```
-   
-2. **Open your browser and go to:**
-   - **Web Interface**: http://localhost:8000
-   - **API Documentation**: http://localhost:8000/docs
-   - **Health Check**: http://localhost:8000/health
+**Start the server:**
+```bash
+uvicorn main:app --host 0.0.0.0 --port 8000
+```
 
-3. **Use the web interface to:**
-   - Fill out the job search form
-   - Set your requirements and filters
-   - Create or specify a Google Spreadsheet
-   - Click "Search Jobs" to start the search
-   - View results and statistics in real-time
+**Or use the startup script:**
+```bash
+./start.sh
+```
+
+**Then open your browser:**
+- **Web Interface**: http://localhost:8000
+- **API Documentation**: http://localhost:8000/docs
+- **Health Check**: http://localhost:8000/health
+
+**Use the web interface to:**
+- Fill out the job search form
+- Set your requirements and filters  
+- Create or specify a Google Spreadsheet
+- Click "Search Jobs" to start the search
+- View results and statistics in real-time
 
 ### 🚀 FastAPI REST API
 
 #### Start the Server
 ```bash
 # Basic usage
-python run_server.py
-
-# Custom host and port
-python run_server.py --host 0.0.0.0 --port 8080
+uvicorn main:app --host 0.0.0.0 --port 8000
 
 # Development mode with auto-reload
-python run_server.py --reload
+uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+# Alternative: using the run script
+python run_server.py
 ```
 
 #### API Endpoints

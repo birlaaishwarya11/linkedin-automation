@@ -432,5 +432,13 @@ def run_server(host: str = "0.0.0.0", port: int = 8000, reload: bool = False):
     )
 
 
+# For direct uvicorn usage
 if __name__ == "__main__":
+    import sys
+    import os
+    
+    # Add project root to path
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    sys.path.insert(0, project_root)
+    
     run_server()
