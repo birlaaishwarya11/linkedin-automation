@@ -18,11 +18,6 @@ from .linkedin_scraper import search_linkedin_jobs
 from .sheets_client import add_jobs_to_sheets, GoogleSheetsClient
 from .config import config
 from .utils import setup_logging, create_error_response, create_success_response
-from .linkedin_oauth import (
-    get_linkedin_oauth_client, 
-    get_linkedin_api_client,
-    LinkedInOAuthError
-)
 
 # Set up logging
 setup_logging()
@@ -101,177 +96,8 @@ class HealthResponse(BaseModel):
     services: Dict[str, str]
 
 
-class OAuthAuthorizationResponse(BaseModel):
-    """Response model for OAuth authorization."""
-    success: bool
-    authorization_url: str
-    state: str
-    message: str
-
-
-class OAuthCallbackResponse(BaseModel):
-    """Response model for OAuth callback."""
-    success: bool
-    message: str
-    user_id: Optional[str] = None
-    profile: Optional[Dict[str, Any]] = None
-
-
-class OAuthStatusResponse(BaseModel):
-    """Response model for OAuth status."""
-    authenticated: bool
-    user_id: Optional[str] = None
-    profile: Optional[Dict[str, Any]] = None
-    message: str
-
-
 # Global state for background tasks
 background_tasks_status = {}
-
-# OAuth state storage (in production, use Redis or database)
-oauth_states = {}
-
-
-# LinkedIn OAuth Endpoints
-
-@app.get("/auth/linkedin", response_model=OAuthAuthorizationResponse)
-async def linkedin_oauth_authorize():
-    """Initiate LinkedIn OAuth authorization."""
-    try:
-        oauth_client = get_linkedin_oauth_client()
-        if not oauth_client:
-            raise HTTPException(
-                status_code=503, 
-                detail="LinkedIn OAuth not configured. Please set LINKEDIN_CLIENT_ID and LINKEDIN_CLIENT_SECRET."
-            )
-        
-        auth_url, state = oauth_client.get_authorization_url()
-        
-        # Store state for validation (in production, use Redis or database)
-        oauth_states[state] = {
-            'created_at': datetime.now(),
-            'used': False
-        }
-        
-        return OAuthAuthorizationResponse(
-            success=True,
-            authorization_url=auth_url,
-            state=state,
-            message="Redirect user to authorization URL"
-        )
-        
-    except LinkedInOAuthError as e:
-        logger.error(f"OAuth authorization error: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
-    except HTTPException:
-        raise  # Re-raise HTTP exceptions as-is
-    except Exception as e:
-        logger.error(f"Unexpected error in OAuth authorization: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
-
-
-@app.get("/auth/linkedin/callback", response_model=OAuthCallbackResponse)
-async def linkedin_oauth_callback(code: str = Query(...), state: str = Query(...)):
-    """Handle LinkedIn OAuth callback."""
-    try:
-        oauth_client = get_linkedin_oauth_client()
-        if not oauth_client:
-            raise HTTPException(status_code=503, detail="LinkedIn OAuth not configured")
-        
-        # Validate state
-        if state not in oauth_states or oauth_states[state]['used']:
-            raise HTTPException(status_code=400, detail="Invalid or expired state parameter")
-        
-        # Mark state as used
-        oauth_states[state]['used'] = True
-        
-        # Exchange code for token
-        token_data = await oauth_client.exchange_code_for_token(code, state)
-        
-        # Get user profile
-        profile = await oauth_client.get_user_profile(token_data['access_token'])
-        
-        # Generate user ID (in production, use proper user management)
-        user_id = f"linkedin_{profile['id']}"
-        
-        # Store token
-        oauth_client.store_user_token(user_id, token_data)
-        
-        logger.info(f"OAuth callback successful for user: {user_id}")
-        
-        return OAuthCallbackResponse(
-            success=True,
-            message="Successfully authenticated with LinkedIn",
-            user_id=user_id,
-            profile=profile
-        )
-        
-    except LinkedInOAuthError as e:
-        logger.error(f"OAuth callback error: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        logger.error(f"Unexpected error in OAuth callback: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
-
-
-@app.get("/auth/linkedin/status/{user_id}", response_model=OAuthStatusResponse)
-async def linkedin_oauth_status(user_id: str):
-    """Check LinkedIn OAuth authentication status for a user."""
-    try:
-        oauth_client = get_linkedin_oauth_client()
-        if not oauth_client:
-            return OAuthStatusResponse(
-                authenticated=False,
-                message="LinkedIn OAuth not configured"
-            )
-        
-        is_authenticated = oauth_client.is_user_authenticated(user_id)
-        
-        if is_authenticated:
-            # Get user profile from stored token
-            token_data = oauth_client.get_user_token(user_id)
-            try:
-                profile = await oauth_client.get_user_profile(token_data['access_token'])
-                return OAuthStatusResponse(
-                    authenticated=True,
-                    user_id=user_id,
-                    profile=profile,
-                    message="User is authenticated"
-                )
-            except LinkedInOAuthError:
-                # Token might be expired
-                oauth_client.remove_user_token(user_id)
-                return OAuthStatusResponse(
-                    authenticated=False,
-                    message="Token expired, please re-authenticate"
-                )
-        else:
-            return OAuthStatusResponse(
-                authenticated=False,
-                message="User is not authenticated"
-            )
-            
-    except Exception as e:
-        logger.error(f"Error checking OAuth status: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
-
-
-@app.delete("/auth/linkedin/{user_id}")
-async def linkedin_oauth_logout(user_id: str):
-    """Logout user and remove OAuth token."""
-    try:
-        oauth_client = get_linkedin_oauth_client()
-        if oauth_client:
-            oauth_client.remove_user_token(user_id)
-        
-        return {
-            "success": True,
-            "message": f"Successfully logged out user: {user_id}"
-        }
-        
-    except Exception as e:
-        logger.error(f"Error during logout: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @app.get("/")
@@ -325,16 +151,6 @@ async def health_check():
             services["google_sheets"] = "credentials_missing"
     except Exception as e:
         services["google_sheets"] = f"error: {str(e)}"
-    
-    # Check LinkedIn OAuth configuration
-    try:
-        oauth_client = get_linkedin_oauth_client()
-        if oauth_client:
-            services["linkedin_oauth"] = "configured"
-        else:
-            services["linkedin_oauth"] = "not_configured"
-    except Exception as e:
-        services["linkedin_oauth"] = f"error: {str(e)}"
     
     return HealthResponse(
         status="healthy",
@@ -577,99 +393,8 @@ async def get_config():
         "max_jobs_per_search": config.max_jobs_per_search,
         "job_search_timeout": config.job_search_timeout,
         "google_credentials_configured": bool(config.google_credentials_path),
-        "default_spreadsheet_configured": bool(config.google_spreadsheet_id),
-        "linkedin_oauth_configured": bool(config.linkedin_client_id and config.linkedin_client_secret)
+        "default_spreadsheet_configured": bool(config.google_spreadsheet_id)
     }
-
-
-# LinkedIn API Endpoints (OAuth-enabled)
-
-@app.get("/linkedin/profile/{user_id}")
-async def get_linkedin_profile(user_id: str):
-    """Get LinkedIn profile for authenticated user."""
-    try:
-        oauth_client = get_linkedin_oauth_client()
-        if not oauth_client:
-            raise HTTPException(status_code=503, detail="LinkedIn OAuth not configured")
-        
-        if not oauth_client.is_user_authenticated(user_id):
-            raise HTTPException(status_code=401, detail="User not authenticated with LinkedIn")
-        
-        token_data = oauth_client.get_user_token(user_id)
-        profile = await oauth_client.get_user_profile(token_data['access_token'])
-        
-        return {
-            "success": True,
-            "profile": profile,
-            "timestamp": datetime.now().isoformat()
-        }
-        
-    except LinkedInOAuthError as e:
-        logger.error(f"LinkedIn API error: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        logger.error(f"Unexpected error getting LinkedIn profile: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
-
-
-@app.post("/linkedin/post/{user_id}")
-async def post_to_linkedin(user_id: str, content: str = Body(..., embed=True)):
-    """Post content to LinkedIn for authenticated user."""
-    try:
-        api_client = get_linkedin_api_client()
-        if not api_client:
-            raise HTTPException(status_code=503, detail="LinkedIn OAuth not configured")
-        
-        oauth_client = get_linkedin_oauth_client()
-        if not oauth_client.is_user_authenticated(user_id):
-            raise HTTPException(status_code=401, detail="User not authenticated with LinkedIn")
-        
-        result = await api_client.post_update(user_id, content)
-        
-        if result["success"]:
-            return {
-                "success": True,
-                "message": "Successfully posted to LinkedIn",
-                "post_id": result.get("post_id"),
-                "timestamp": datetime.now().isoformat()
-            }
-        else:
-            raise HTTPException(status_code=400, detail=result.get("error", "Failed to post to LinkedIn"))
-            
-    except LinkedInOAuthError as e:
-        logger.error(f"LinkedIn API error: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        logger.error(f"Unexpected error posting to LinkedIn: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
-
-
-@app.get("/linkedin/connections/{user_id}")
-async def get_linkedin_connections(user_id: str):
-    """Get LinkedIn connections for authenticated user."""
-    try:
-        api_client = get_linkedin_api_client()
-        if not api_client:
-            raise HTTPException(status_code=503, detail="LinkedIn OAuth not configured")
-        
-        oauth_client = get_linkedin_oauth_client()
-        if not oauth_client.is_user_authenticated(user_id):
-            raise HTTPException(status_code=401, detail="User not authenticated with LinkedIn")
-        
-        result = await api_client.get_user_connections(user_id)
-        
-        return {
-            "success": True,
-            "connections": result,
-            "timestamp": datetime.now().isoformat()
-        }
-        
-    except LinkedInOAuthError as e:
-        logger.error(f"LinkedIn API error: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        logger.error(f"Unexpected error getting LinkedIn connections: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # Error handlers
