@@ -32,6 +32,30 @@ class Config(BaseSettings):
         description="LinkedIn password for authenticated searches (optional)"
     )
     
+    # LinkedIn OAuth Configuration
+    linkedin_client_id: Optional[str] = Field(
+        default=None,
+        description="LinkedIn OAuth Client ID"
+    )
+    linkedin_client_secret: Optional[str] = Field(
+        default=None,
+        description="LinkedIn OAuth Client Secret"
+    )
+    linkedin_redirect_uri: str = Field(
+        default="http://localhost:8000/auth/linkedin/callback",
+        description="LinkedIn OAuth Redirect URI"
+    )
+    linkedin_oauth_scopes: str = Field(
+        default="r_liteprofile,r_emailaddress,w_member_social",
+        description="LinkedIn OAuth scopes (comma-separated)"
+    )
+    
+    # OAuth Token Storage
+    oauth_secret_key: str = Field(
+        default="your-secret-key-change-this-in-production",
+        description="Secret key for encrypting OAuth tokens"
+    )
+    
     # Chrome WebDriver Configuration
     chrome_headless: bool = Field(
         default=True,
