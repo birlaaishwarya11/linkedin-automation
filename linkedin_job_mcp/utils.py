@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Optional
 from functools import wraps
 import asyncio
 from datetime import datetime
+import re
 
 
 def setup_logging(level: str = "INFO", log_file: Optional[str] = None):
@@ -253,3 +254,62 @@ def create_success_response(data: Any, message: str = "") -> Dict[str, Any]:
         "message": message,
         "timestamp": get_current_timestamp()
     }
+
+
+def clean_text(text: str) -> str:
+    """Clean and normalize text content."""
+    if not text:
+        return ""
+    
+    # Remove extra whitespace and normalize
+    text = re.sub(r'\s+', ' ', text.strip())
+    
+    # Remove common HTML entities
+    text = text.replace('&nbsp;', ' ')
+    text = text.replace('&amp;', '&')
+    text = text.replace('&lt;', '<')
+    text = text.replace('&gt;', '>')
+    text = text.replace('&quot;', '"')
+    text = text.replace('&#39;', "'")
+    
+    return text
+
+
+def extract_salary(text: str) -> str:
+    """Extract salary information from job text."""
+    if not text:
+        return ""
+    
+    # Common salary patterns
+    salary_patterns = [
+        r'\$[\d,]+(?:\.\d{2})?\s*-\s*\$[\d,]+(?:\.\d{2})?',  # $50,000 - $70,000
+        r'\$[\d,]+(?:\.\d{2})?(?:\s*-\s*[\d,]+)?[kK]?',      # $50k, $50,000
+        r'[\d,]+[kK]\s*-\s*[\d,]+[kK]',                      # 50k - 70k
+        r'[\d,]+\s*-\s*[\d,]+\s*per\s+(?:year|hour)',        # 50000 - 70000 per year
+    ]
+    
+    for pattern in salary_patterns:
+        match = re.search(pattern, text, re.IGNORECASE)
+        if match:
+            return match.group(0)
+    
+    return ""
+
+
+def match_requirements(text: str, requirements: List[str]) -> bool:
+    """Check if text matches the given requirements."""
+    if not requirements:
+        return True
+    
+    if not text:
+        return False
+    
+    text_lower = text.lower()
+    matches = 0
+    
+    for requirement in requirements:
+        if requirement.lower() in text_lower:
+            matches += 1
+    
+    # Consider it a match if at least 50% of requirements are met
+    return matches >= len(requirements) * 0.5

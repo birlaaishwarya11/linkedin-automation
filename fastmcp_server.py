@@ -6,7 +6,7 @@ import logging
 import json
 from typing import List, Optional, Dict, Any
 from fastmcp import FastMCP
-from linkedin_job_mcp.linkedin_scraper import search_linkedin_jobs
+from linkedin_job_mcp.linkedin_scraper_fallback import search_linkedin_jobs
 from linkedin_job_mcp.sheets_client import add_jobs_to_sheets, GoogleSheetsClient
 from linkedin_job_mcp.config import config
 
