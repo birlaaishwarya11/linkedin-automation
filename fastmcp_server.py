@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 mcp = FastMCP("linkedin-job-search")
 
 @mcp.tool()
-def search_linkedin_jobs_tool(
+async def search_linkedin_jobs_tool(
     keywords: str,
     location: str = "",
     requirements: List[str] = None,
@@ -55,22 +55,16 @@ def search_linkedin_jobs_tool(
             
         logger.info(f"Searching LinkedIn jobs: {keywords} in {location}")
         
-        # Run the async search function
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        
-        try:
-            jobs = loop.run_until_complete(search_linkedin_jobs(
-                keywords=keywords,
-                location=location,
-                requirements=requirements,
-                max_jobs=max_jobs,
-                experience_level=experience_level,
-                employment_type=employment_type,
-                date_posted=date_posted
-            ))
-        finally:
-            loop.close()
+        # Use the existing event loop
+        jobs = await search_linkedin_jobs(
+            keywords=keywords,
+            location=location,
+            requirements=requirements,
+            max_jobs=max_jobs,
+            experience_level=experience_level,
+            employment_type=employment_type,
+            date_posted=date_posted
+        )
         
         if not jobs:
             return json.dumps({
@@ -104,19 +98,12 @@ def search_linkedin_jobs_tool(
             try:
                 logger.info(f"Adding jobs to Google Sheets: {spreadsheet_id}")
                 
-                # Run the async sheets function
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                
-                try:
-                    sheets_result = loop.run_until_complete(add_jobs_to_sheets(
-                        jobs=jobs,
-                        spreadsheet_id=spreadsheet_id,
-                        filter_duplicates=filter_duplicates
-                    ))
-                    response_data["sheets_result"] = sheets_result
-                finally:
-                    loop.close()
+                sheets_result = await add_jobs_to_sheets(
+                    jobs=jobs,
+                    spreadsheet_id=spreadsheet_id,
+                    filter_duplicates=filter_duplicates
+                )
+                response_data["sheets_result"] = sheets_result
                     
             except Exception as e:
                 logger.error(f"Error adding jobs to sheets: {e}")
@@ -132,7 +119,7 @@ def search_linkedin_jobs_tool(
         })
 
 @mcp.tool()
-def create_job_spreadsheet(title: str) -> str:
+async def create_job_spreadsheet(title: str) -> str:
     """
     Create a new Google Spreadsheet for storing job listings.
     
@@ -145,15 +132,8 @@ def create_job_spreadsheet(title: str) -> str:
     try:
         logger.info(f"Creating new spreadsheet: {title}")
         
-        # Run the async function
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        
-        try:
-            sheets_client = GoogleSheetsClient()
-            spreadsheet = loop.run_until_complete(sheets_client.create_job_spreadsheet(title))
-        finally:
-            loop.close()
+        sheets_client = GoogleSheetsClient()
+        spreadsheet = await sheets_client.create_job_spreadsheet(title)
         
         return json.dumps({
             "status": "success",
@@ -173,7 +153,7 @@ def create_job_spreadsheet(title: str) -> str:
         })
 
 @mcp.tool()
-def get_spreadsheet_info(spreadsheet_id: str) -> str:
+async def get_spreadsheet_info(spreadsheet_id: str) -> str:
     """
     Get information about a Google Spreadsheet.
     
@@ -186,15 +166,8 @@ def get_spreadsheet_info(spreadsheet_id: str) -> str:
     try:
         logger.info(f"Getting spreadsheet info: {spreadsheet_id}")
         
-        # Run the async function
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        
-        try:
-            sheets_client = GoogleSheetsClient()
-            info = loop.run_until_complete(sheets_client.get_spreadsheet_info(spreadsheet_id))
-        finally:
-            loop.close()
+        sheets_client = GoogleSheetsClient()
+        info = await sheets_client.get_spreadsheet_info(spreadsheet_id)
         
         return json.dumps({
             "status": "success",
