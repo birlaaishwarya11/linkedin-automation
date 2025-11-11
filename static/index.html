@@ -261,6 +261,25 @@
             <p>Search for jobs on LinkedIn and automatically add them to Google Sheets</p>
         </div>
         
+        <!-- LinkedIn OAuth Section -->
+        <div class="card" id="oauthSection">
+            <h2>🔗 LinkedIn Authentication</h2>
+            <div id="oauthStatus">
+                <p>Connect your LinkedIn account to access additional features and improved job search capabilities.</p>
+                <div style="text-align: center; margin-top: 1rem;">
+                    <button type="button" class="btn" onclick="connectLinkedIn()">🔗 Connect to LinkedIn</button>
+                    <button type="button" class="btn btn-secondary" onclick="checkOAuthStatus()" style="margin-left: 1rem;">📊 Check Status</button>
+                </div>
+            </div>
+            <div id="oauthProfile" style="display: none;">
+                <div class="alert alert-success">
+                    <strong>✅ Connected to LinkedIn</strong>
+                    <div id="profileInfo" style="margin-top: 0.5rem;"></div>
+                    <button type="button" class="btn btn-secondary" onclick="disconnectLinkedIn()" style="margin-top: 1rem;">🔌 Disconnect</button>
+                </div>
+            </div>
+        </div>
+        
         <div class="card">
             <h2>Job Search</h2>
             <form id="jobSearchForm">
@@ -354,11 +373,145 @@
 
     <script>
         const API_BASE = window.location.origin;
+        let currentUserId = localStorage.getItem('linkedin_user_id');
+        
+        // Initialize OAuth status on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            if (currentUserId) {
+                checkOAuthStatus();
+            }
+        });
         
         document.getElementById('jobSearchForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             await searchJobs();
         });
+        
+        // LinkedIn OAuth Functions
+        async function connectLinkedIn() {
+            try {
+                const response = await fetch(`${API_BASE}/auth/linkedin`);
+                const result = await response.json();
+                
+                if (result.success) {
+                    // Store state for callback validation
+                    localStorage.setItem('oauth_state', result.state);
+                    // Redirect to LinkedIn authorization
+                    window.location.href = result.authorization_url;
+                } else {
+                    showAlert('Error initiating LinkedIn connection: ' + result.message, 'error');
+                }
+            } catch (error) {
+                showAlert('Error connecting to LinkedIn: ' + error.message, 'error');
+            }
+        }
+        
+        async function checkOAuthStatus() {
+            if (!currentUserId) {
+                updateOAuthUI(false);
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/auth/linkedin/status/${currentUserId}`);
+                const result = await response.json();
+                
+                if (result.authenticated) {
+                    updateOAuthUI(true, result.profile);
+                } else {
+                    updateOAuthUI(false);
+                    currentUserId = null;
+                    localStorage.removeItem('linkedin_user_id');
+                }
+            } catch (error) {
+                console.error('Error checking OAuth status:', error);
+                updateOAuthUI(false);
+            }
+        }
+        
+        async function disconnectLinkedIn() {
+            if (!currentUserId) return;
+            
+            try {
+                const response = await fetch(`${API_BASE}/auth/linkedin/${currentUserId}`, {
+                    method: 'DELETE'
+                });
+                
+                if (response.ok) {
+                    currentUserId = null;
+                    localStorage.removeItem('linkedin_user_id');
+                    updateOAuthUI(false);
+                    showAlert('Successfully disconnected from LinkedIn', 'success');
+                } else {
+                    showAlert('Error disconnecting from LinkedIn', 'error');
+                }
+            } catch (error) {
+                showAlert('Error disconnecting from LinkedIn: ' + error.message, 'error');
+            }
+        }
+        
+        function updateOAuthUI(authenticated, profile = null) {
+            const statusDiv = document.getElementById('oauthStatus');
+            const profileDiv = document.getElementById('oauthProfile');
+            const profileInfoDiv = document.getElementById('profileInfo');
+            
+            if (authenticated && profile) {
+                statusDiv.style.display = 'none';
+                profileDiv.style.display = 'block';
+                
+                const name = profile.localizedFirstName && profile.localizedLastName 
+                    ? `${profile.localizedFirstName} ${profile.localizedLastName}`
+                    : 'LinkedIn User';
+                
+                profileInfoDiv.innerHTML = `
+                    <strong>Name:</strong> ${escapeHtml(name)}<br>
+                    ${profile.email ? `<strong>Email:</strong> ${escapeHtml(profile.email)}<br>` : ''}
+                    <strong>User ID:</strong> ${escapeHtml(currentUserId)}
+                `;
+            } else {
+                statusDiv.style.display = 'block';
+                profileDiv.style.display = 'none';
+            }
+        }
+        
+        // Handle OAuth callback
+        function handleOAuthCallback() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const code = urlParams.get('code');
+            const state = urlParams.get('state');
+            const storedState = localStorage.getItem('oauth_state');
+            
+            if (code && state && state === storedState) {
+                // Process OAuth callback
+                processOAuthCallback(code, state);
+                // Clean up URL
+                window.history.replaceState({}, document.title, window.location.pathname);
+                localStorage.removeItem('oauth_state');
+            }
+        }
+        
+        async function processOAuthCallback(code, state) {
+            try {
+                const response = await fetch(`${API_BASE}/auth/linkedin/callback?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`);
+                const result = await response.json();
+                
+                if (result.success) {
+                    currentUserId = result.user_id;
+                    localStorage.setItem('linkedin_user_id', currentUserId);
+                    updateOAuthUI(true, result.profile);
+                    showAlert('Successfully connected to LinkedIn!', 'success');
+                } else {
+                    showAlert('Error processing LinkedIn callback: ' + result.message, 'error');
+                }
+            } catch (error) {
+                showAlert('Error processing LinkedIn callback: ' + error.message, 'error');
+            }
+        }
+        
+        // Check for OAuth callback on page load
+        if (window.location.search.includes('code=')) {
+            handleOAuthCallback();
+        }
         
         async function searchJobs() {
             const form = document.getElementById('jobSearchForm');
