@@ -206,6 +206,10 @@ def mcp_endpoint():
             {
                 "name": "get_spreadsheet_info",
                 "description": "Get information about a Google Spreadsheet"
+            },
+            {
+                "name": "linkedin_oauth_authorize",
+                "description": "Initiate LinkedIn OAuth authorization."
             }
         ]
     }
